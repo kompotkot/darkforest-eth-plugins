@@ -9,8 +9,7 @@
         "@darkforest_eth/types": "^6.7.29",
 		"@projectsophon/df-plugin-dev-server": "^1.5.0",
 		"@types/node": "^18.0.3",
-		"typescript": "^4.7.4",
-        "voronoi": "^1.0.0"
+		"typescript": "^4.7.4"
 	},
 	"scripts": {
 		"dev": "df-plugin-dev-server --glob src/*.ts"

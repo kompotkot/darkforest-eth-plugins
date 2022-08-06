@@ -6,27 +6,40 @@ import {
     PlanetLevel,
     PlanetType,
 } from "@darkforest_eth/types";
-import Voronoi from "voronoi";
+import Voronoi from "./voronoi";
 import { Utils, randomColorPicker } from "./utils";
 
 class Plugin {
     public container: HTMLDivElement | undefined
-    public ownerColor: string;
-    public ownerBorderColor: string;
-    public showRegions: boolean
+
+    public enemyFillColor: string
+    public ownerFillColor: string
+    public bordersColor: string
+    public showEdges: boolean
+    public fillRegions: boolean
+
+    public nullAddress = "0x0000000000000000000000000000000000000000"
+    private playerAddress: string
 
     private interval: NodeJS.Timer;
     private planets: Planet[] | undefined;
+
     private voronoi: any
 
     constructor() {
-        this.showRegions = true
+        this.enemyFillColor = "rgb(248, 92, 80, 0.1)"
+        this.ownerFillColor = "rgb(81, 234, 255, 0.1)"
+        this.bordersColor = "rgb(242, 248, 253, 0.3)"
+
+        this.showEdges = true
+        this.fillRegions = false
+
+        this.playerAddress = "0xe7f5cce56814f2155f05ef6311a6de55e4189ea5"
 
         this.interval = setInterval(() => {
             this.planets = Utils.getAllPlanets()
-                .filter((p: Planet) => p.planetType === PlanetType.PLANET)
+            // .filter((p: Planet) => p.planetType === PlanetType.PLANET)
         }, 1000);
-        [this.ownerColor, this.ownerBorderColor] = randomColorPicker()
 
         this.voronoi = new Voronoi();
     }
@@ -37,22 +50,22 @@ class Plugin {
     async render(container: HTMLDivElement) {
         this.container = container;
 
-        // Checkbox "Show empire regions"
+        // Checkbox "Show empire edges"
         let checkboxDiv = document.createElement('div');
         let checkboxInput = document.createElement('input');
         checkboxInput.style.width = '10%';
         checkboxInput.type = "checkbox";
-        checkboxInput.checked = this.showRegions;
+        checkboxInput.checked = this.showEdges;
         checkboxInput.onchange = (event: any) => {
             if (event.target.checked) {
-                this.showRegions = true
+                this.showEdges = true
             } else {
-                this.showRegions = false
+                this.showEdges = false
             }
         }
         let checkboxLabel = document.createElement('label');
         checkboxLabel.style.width = '80%';
-        checkboxLabel.innerHTML = "Show empire regions";
+        checkboxLabel.innerHTML = "Show empire edges";
         checkboxDiv.appendChild(checkboxInput);
         checkboxDiv.appendChild(checkboxLabel);
         this.container.appendChild(checkboxDiv);
@@ -69,7 +82,7 @@ class Plugin {
      * Draw canvas frames.
      */
     draw(ctx: any) {
-        if (this.showRegions) {
+        if (this.showEdges) {
             const viewport = ui.getViewport();
             const scale = viewport.scale
 
@@ -109,34 +122,75 @@ class Plugin {
                 // ctx.stroke();
                 // ctx.closePath();
 
-                const diagram = this.voronoi.compute(sites, bbox);
-                this.generateRegions(ctx, diagram)
+                if (sites.length > 5) {
+                    const diagram = this.voronoi.compute(sites, bbox);
+                    diagram.cells.forEach((cell: any) => {
+                        if (cell.site.owner !== this.nullAddress) {
+                            const halfedges = cell.halfedges;
+                            const nHalfedges = halfedges.length;
+                            if (nHalfedges > 2) {
+                                // TODO: Is there a way to draw in canvas simultaneously different paths?
+                                this.generateBorders(ctx, halfedges, nHalfedges)
+                                this.generateRegions(ctx, cell, halfedges, nHalfedges)
+                            }
+                        }
+                    })
+                }
             }
         }
     }
 
-    generateRegions(ctx: any, diagram: any) {
-        // Regions
+    // Stroke borders of empires
+    generateBorders(ctx: any, halfedges: any[], nHalfedges: number) {
+        const v = halfedges[0].getStartpoint();
         ctx.beginPath();
-        ctx.lineWidth = 4
-        ctx.strokeStyle = this.ownerBorderColor;
-
-        const edges = diagram.edges
-        edges.forEach((edge: any) => {
-            // Unite regions if they have one owner
-            if (edge.lSite?.owner === edge.rSite?.owner) {
-                return
+        ctx.moveTo(v.x, v.y);
+        for (var iHalfedge = 0; iHalfedge < nHalfedges; iHalfedge++) {
+            const v = halfedges[iHalfedge].getEndpoint();
+            if (
+                halfedges[iHalfedge].edge.lSite.owner ===
+                halfedges[iHalfedge].edge.rSite?.owner
+            ) {
+                ctx.moveTo(v.x, v.y);
+            } else {
+                ctx.lineTo(v.x, v.y);
             }
-            if (!edge.rSite) {
-                return
-            }
-            ctx.moveTo(edge.va.x, edge.va.y)
-            ctx.lineTo(edge.vb.x, edge.vb.y)
-
-        })
+        }
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = this.bordersColor;
         ctx.stroke();
+
+    }
+
+    // Fullfil region with offset
+    generateRegions(ctx: any, cell: any, halfedges: any[], nHalfedges: number) {
+        ctx.fillStyle = this.enemyFillColor
+        if (cell.site.owner === this.playerAddress) {
+            ctx.fillStyle = this.ownerFillColor
+        }
+
+        const v = halfedges[0].getStartpoint()
+        ctx.beginPath()
+        const [vx, vy] = this.shiftEdgeCoords(cell, v)
+        ctx.moveTo(vx, vy)
+        for (let iHalfedge = 0; iHalfedge < nHalfedges; iHalfedge++) {
+            const v = halfedges[iHalfedge].getStartpoint()
+            const [vx, vy] = this.shiftEdgeCoords(cell, v)
+            ctx.lineTo(vx, vy)
+        }
+        ctx.fill()
         ctx.closePath();
     }
+
+    // Coordinate shift for region offset
+    shiftEdgeCoords(cell: any, v: { x: number; y: number; }) {
+        const shiftVal = 0.1
+        let vx = (v.x + cell.site.x * shiftVal) / (1 + shiftVal);
+        let vy = (v.y + cell.site.y * shiftVal) / (1 + shiftVal);
+        return [vx, vy];
+    };
+
+
 }
 
 export default Plugin;

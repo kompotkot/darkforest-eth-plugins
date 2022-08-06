@@ -13,7 +13,7 @@ export class Utils {
 	}
 }
 
-const colors = ["#0077b6", "#003566"];
+const colors = ["#f4a261"];
 
 export function randomColorPicker(): [string, string] {
 	const colorOne = colors[Math.floor(Math.random() * colors.length)];
