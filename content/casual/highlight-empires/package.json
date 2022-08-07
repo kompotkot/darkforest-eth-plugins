@@ -6,12 +6,14 @@
 	"author": "",
 	"license": "MIT",
 	"scripts": {
-		"dev": "df-plugin-dev-server --glob src/*.ts"
+		"dev": "df-plugin-dev-server --glob src/*.ts",
+		"prettier": "prettier --write src/*.ts"
 	},
 	"devDependencies": {
 		"@darkforest_eth/types": "^6.7.29",
 		"@projectsophon/df-plugin-dev-server": "^1.5.0",
 		"@types/node": "^18.6.3",
+		"prettier": "2.7.1",
 		"typescript": "^4.7.4"
 	}
 }
