@@ -3,15 +3,14 @@
  */
 import {
     Planet,
-    PlanetLevel,
     PlanetType,
 } from "@darkforest_eth/types";
 import Voronoi from "./voronoi";
-import { Utils, randomColorPicker } from "./utils";
 
 class Plugin {
     public container: HTMLDivElement | undefined
 
+    public colors: string[]
     public enemyFillColor: string
     public ownerFillColor: string
     public bordersColor: string
@@ -27,6 +26,7 @@ class Plugin {
     private voronoi: any
 
     constructor() {
+        this.colors = ["#f4a261"]
         this.enemyFillColor = "rgb(248, 92, 80, 0.1)"
         this.ownerFillColor = "rgb(81, 234, 255, 0.1)"
         this.bordersColor = "rgb(242, 248, 253, 0.3)"
@@ -37,7 +37,7 @@ class Plugin {
         this.playerAddress = "0xe7f5cce56814f2155f05ef6311a6de55e4189ea5"
 
         this.interval = setInterval(() => {
-            this.planets = Utils.getAllPlanets()
+            this.planets = this.getAllPlanets()
             // .filter((p: Planet) => p.planetType === PlanetType.PLANET)
         }, 1000);
 
@@ -190,7 +190,22 @@ class Plugin {
         return [vx, vy];
     };
 
+    getAllPlanets(levelFrom?: number, levelTo?: number): any[] {
+        let planets = Array.from(df.getAllPlanets());
+        if (levelFrom) {
+            planets = planets.filter((p: any) => p.planetLevel >= levelFrom);
+        }
+        if (levelTo) {
+            planets = planets.filter((p: any) => p.planetLevel <= levelTo);
+        }
+        return planets;
+    }
 
+    randomColorPicker(): [string, string] {
+        const colorOne = this.colors[Math.floor(Math.random() * this.colors.length)];
+        const colorTwo = this.colors[Math.floor(Math.random() * this.colors.length)];
+        return [colorOne, colorTwo]
+    }
 }
 
 export default Plugin;
