@@ -8,8 +8,8 @@ import Voronoi from "./voronoi"
 const NULL_ADDRESS = "0x0000000000000000000000000000000000000000"
 
 class Plugin {
-    public enemyFillColors: string[]
-    public allyFillColors: string[]
+    public enemyFillColor: string
+    public allyFillColor: string
     public ownerFillColor: string
     public bordersColor: string
     public showEdges: boolean
@@ -25,8 +25,8 @@ class Plugin {
     private voronoi: any
 
     constructor() {
-        this.enemyFillColors = ["rgb(248, 92, 80, 0.1)"]
-        this.allyFillColors = ["rgb(81, 234, 255, 0.1)"]
+        this.enemyFillColor = "rgb(248, 92, 80, 0.2)"
+        this.allyFillColor = "rgb(81, 234, 255, 0.2)"
         this.ownerFillColor = "rgb(242, 248, 253, 0.1)"
         this.bordersColor = "rgb(242, 248, 253, 0.3)"
 
@@ -36,9 +36,6 @@ class Plugin {
         this.ownerAddress = ui.getAccount()
         this.playerAddresses = new Set()
         this.allyAddresses = new Set()
-
-        // TODO: Delete it
-        this.allyAddresses.add("0x0000000000000000000000000000000000000123")
 
         this.interval = setInterval(() => {
             this.planets = this.getAllPlanets()
@@ -61,7 +58,7 @@ class Plugin {
 
         let allyLiElements = ""
         this.allyAddresses.forEach((address: string) => {
-            allyLiElements += `<li class="df-plugin-he-li"><p>${address}</p></li>`
+            allyLiElements += `<li><p id="df-plugin-he-li-${address}">${address}</p></li>`
         })
 
         container.innerHTML = `<div class="df-plugin-he-wrapper">
@@ -77,7 +74,7 @@ class Plugin {
                 <df-button id="df-plugin-he-btn-ally-address" style="margin-top: 0;">Add new ally</df-button>
             </div>
             <div class="df-plugin-he-row">
-                <ul>
+                <ul id="df-plugin-he-ul-allies">
                     ${allyLiElements}
                 </ul>
             </div>
@@ -92,8 +89,13 @@ class Plugin {
             .df-plugin-he-inp {
                 width: 90%;
             }
-            .df-plugin-he-li {
-                margin: 0 0.1em;
+            .df-plugin-he-row > ul > li {
+                margin: 0 .1em;
+            }
+            .df-plugin-he-row > ul > li:hover {
+                margin: 0 .1em;
+                text-decoration: line-through;
+                cursor: pointer;
             }
             .df-plugin-he-row-title {
                 font-size: 14pt;
@@ -128,7 +130,39 @@ class Plugin {
             }
         }
         // Alliance control panel
-        // TODO
+        // Add new ally
+        const allyAddressAddInput = document.getElementById(
+            "df-plugin-he-inp-ally-address"
+        ) as HTMLInputElement | null
+        const allyAddressAddButton = document.getElementById(
+            "df-plugin-he-btn-ally-address"
+        ) as HTMLButtonElement | null
+        if (allyAddressAddButton != null && allyAddressAddInput != null) {
+            allyAddressAddButton.onclick = () => {
+                const av = allyAddressAddInput.value
+                if (
+                    av !== "" &&
+                    av.startsWith("0x") &&
+                    av.length === 42 &&
+                    av !== this.ownerAddress
+                ) {
+                    this.allyAddresses.add(av)
+                    this.render(container)
+                }
+            }
+        }
+        // Remove ally
+        const allyAddressUl = document.getElementById(
+            "df-plugin-he-ul-allies"
+        ) as HTMLUListElement | null
+        const removeAlly = (e: any) => {
+            const allyIdList = e.target.id.trim().split("-")
+            this.allyAddresses.delete(allyIdList[allyIdList.length - 1])
+            this.render(container)
+        }
+        if (allyAddressUl != null) {
+            allyAddressUl.addEventListener("click", removeAlly)
+        }
     }
 
     /**
@@ -216,11 +250,11 @@ class Plugin {
 
     // Fullfil region with offset
     generateRegions(ctx: any, cell: any, halfedges: any[], nHalfedges: number) {
-        ctx.fillStyle = this.enemyFillColors[0]
+        ctx.fillStyle = this.enemyFillColor
         if (cell.site.owner === this.ownerAddress) {
             ctx.fillStyle = this.ownerFillColor
         } else if (this.allyAddresses.has(cell.site.owner)) {
-            ctx.fillStyle = this.allyFillColors[0]
+            ctx.fillStyle = this.allyFillColor
         }
 
         const v = halfedges[0].getStartpoint()
