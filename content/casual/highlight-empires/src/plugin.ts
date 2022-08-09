@@ -280,7 +280,12 @@ class Plugin {
 
     // Return list of all planets, wormholes and other space objects
     getAllPlanets(levelFrom?: number, levelTo?: number): LocatablePlanet[] {
-        let planets: LocatablePlanet[] = Array.from(df.getAllPlanets())
+        let planets: LocatablePlanet[]
+        try {
+            planets = Array.from(df.getAllPlanets())
+        } catch (err) {
+            return []
+        }
         if (levelFrom) {
             planets = planets.filter((p: any) => p.planetLevel >= levelFrom)
         }
