@@ -235,7 +235,13 @@ class Plugin {
     }
     // Return list of all planets, wormholes and other space objects
     getAllPlanets(levelFrom, levelTo) {
-        let planets = Array.from(df.getAllPlanets());
+        let planets;
+        try {
+            planets = Array.from(df.getAllPlanets());
+        }
+        catch (err) {
+            return [];
+        }
         if (levelFrom) {
             planets = planets.filter((p) => p.planetLevel >= levelFrom);
         }
