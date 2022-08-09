@@ -1,7 +1,7 @@
 /*
  * Help to analyze empires around at map.
  */
-import { Planet, PlanetType } from "@darkforest_eth/types"
+import { LocatablePlanet, PlanetType } from "@darkforest_eth/types"
 import Voronoi from "./voronoi"
 
 // Null address represents a space object without an owner
@@ -20,7 +20,7 @@ class Plugin {
     private allyAddresses: Set<string>
 
     private interval: NodeJS.Timer
-    private planets: Planet[] | undefined
+    private planets: LocatablePlanet[] | undefined
 
     private voronoi: any
 
@@ -279,8 +279,8 @@ class Plugin {
     }
 
     // Return list of all planets, wormholes and other space objects
-    getAllPlanets(levelFrom?: number, levelTo?: number): any[] {
-        let planets = Array.from(df.getAllPlanets())
+    getAllPlanets(levelFrom?: number, levelTo?: number): LocatablePlanet[] {
+        let planets: LocatablePlanet[] = Array.from(df.getAllPlanets())
         if (levelFrom) {
             planets = planets.filter((p: any) => p.planetLevel >= levelFrom)
         }
