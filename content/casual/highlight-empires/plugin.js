@@ -30,6 +30,7 @@ class Plugin {
                 }
             }
         }, 1000);
+        this.previousSiteHashes = [];
         this.voronoi = new Voronoi();
     }
     /**
@@ -151,24 +152,39 @@ class Plugin {
             let xList = [];
             let yList = [];
             let sites = [];
+            let siteHashes = [];
+            let foundNewSite = false;
             if (this.planets) {
                 this.planets.forEach((p) => {
                     const { x, y } = viewport.worldToCanvasCoords(p.location.coords);
                     xList.push(x);
                     yList.push(y);
                     sites.push({ x: x, y: y, owner: p.owner });
+                    // Optimization to exclude recalculations of voronoi diagram
+                    if (!this.previousSiteHashes.includes(`${x}${y}${p.owner}`)) {
+                        foundNewSite = true;
+                    }
+                    siteHashes.push(`${x}${y}${p.owner}`);
                 });
             }
+            this.previousSiteHashes = siteHashes;
             // Generate boundary box for voronoi diagram
             const xl = Math.min(...xList);
             const xr = Math.max(...xList);
             const yt = Math.max(...yList);
             const yb = Math.min(...yList);
             const bbox = { xl: xl, xr: xr, yt: yb, yb: yt };
-            // Iterate
             if (isFinite(bbox.xl) && isFinite(bbox.yt)) {
                 if (sites.length > 5) {
-                    const diagram = this.voronoi.compute(sites, bbox);
+                    let diagram;
+                    if (foundNewSite) {
+                        diagram = this.voronoi.compute(sites, bbox);
+                        this.previousDiagram = diagram;
+                    }
+                    else {
+                        // Reuse previous diagram
+                        diagram = this.previousDiagram;
+                    }
                     // Iterate over each cell based on planets coords
                     diagram.cells.forEach((cell) => {
                         if (cell.site.owner !== NULL_ADDRESS) {
