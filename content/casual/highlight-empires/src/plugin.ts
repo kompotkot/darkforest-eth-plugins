@@ -21,6 +21,8 @@ class Plugin {
 
     private interval: NodeJS.Timer
     private planets: LocatablePlanet[] | undefined
+    private previousSiteHashes: string[]
+    private previousDiagram: any
 
     private voronoi: any
 
@@ -46,6 +48,7 @@ class Plugin {
                 }
             }
         }, 1000)
+        this.previousSiteHashes = []
 
         this.voronoi = new Voronoi()
     }
@@ -182,6 +185,9 @@ class Plugin {
             let xList: number[] = []
             let yList: number[] = []
             let sites: { x: any; y: any; owner: any }[] = []
+
+            let siteHashes: string[] = []
+            let foundNewSite = false
             if (this.planets) {
                 this.planets.forEach((p: any) => {
                     const { x, y } = viewport.worldToCanvasCoords(
@@ -190,8 +196,15 @@ class Plugin {
                     xList.push(x)
                     yList.push(y)
                     sites.push({ x: x, y: y, owner: p.owner })
+
+                    // Optimization to exclude recalculations of voronoi diagram
+                    if (!this.previousSiteHashes.includes(`${x}${y}${p.owner}`)) {
+                        foundNewSite = true
+                    }
+                    siteHashes.push(`${x}${y}${p.owner}`)
                 })
             }
+            this.previousSiteHashes = siteHashes
 
             // Generate boundary box for voronoi diagram
             const xl = Math.min(...xList)
@@ -200,11 +213,16 @@ class Plugin {
             const yb = Math.min(...yList)
             const bbox = { xl: xl, xr: xr, yt: yb, yb: yt }
 
-            // Iterate
             if (isFinite(bbox.xl) && isFinite(bbox.yt)) {
                 if (sites.length > 5) {
-                    const diagram = this.voronoi.compute(sites, bbox)
-
+                    let diagram: any
+                    if (foundNewSite) {
+                        diagram = this.voronoi.compute(sites, bbox)
+                        this.previousDiagram = diagram
+                    } else {
+                        // Reuse previous diagram
+                        diagram = this.previousDiagram
+                    }
                     // Iterate over each cell based on planets coords
                     diagram.cells.forEach((cell: any) => {
                         if (cell.site.owner !== NULL_ADDRESS) {
